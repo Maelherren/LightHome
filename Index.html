@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LightHome</title>
+</head>
+<body>
+
+  <p id="statut">Pret</p>
+
+  <button onclick="lancer('orageLeger', this)">Orage leger</button>
+  <button onclick="lancer('orageMoyen', this)">Orage moyen</button>
+  <button onclick="lancer('orageViolent', this)">Orage violent</button>
+  <button onclick="lancer('orageAleatoire', this)">Orage aleatoire</button>
+  <button onclick="lancer('bougie', this)">Bougie</button>
+  <button onclick="lancer('braise', this)">Braise</button>
+  <button onclick="lancer('ocean', this)">Ocean</button>
+  <button onclick="lancer('aurora', this)">Aurore boreale</button>
+  <button onclick="lancer('discoPulse', this)">Disco pulse</button>
+  <button onclick="lancer('discoRapide', this)">Disco rapide</button>
+  <button onclick="lancer('neon', this)">Neon</button>
+  <button onclick="lancer('respiration', this)">Respiration</button>
+  <button onclick="lancer('coucher', this)">Coucher de soleil</button>
+  <button onclick="lancer('foret', this)">Foret</button>
+  <button onclick="lancer('rave', this)">Rave</button>
+  <button onclick="lancer('nuit', this)">Nuit</button>
+  <button onclick="lancer('lecture', this)">Lecture</button>
+  <button onclick="lancer('concentration', this)">Concentration</button>
+  <button onclick="toutArreter()">Arreter — lumiere normale</button>
+
+  <script>
+    const BRIDGE   = 'http://192.168.0.164';
+    const USERNAME = 'TON_USERNAME_ICI';
+    const LIGHTS   = [14, 27, 32];
+
+    let actif = false;
+    let timers = [];
+    let btnCourant = null;
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+    function statut(msg) { document.getElementById('statut').textContent = msg; }
+
+    async function setLight(id, s) {
+      try {
+        await fetch(`${BRIDGE}/api/${USERNAME}/lights/${id}/state`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(s)
+        });
+      } catch(e) {}
+    }
+
+    async function setAll(s) {
+      await Promise.all(LIGHTS.map(id => setLight(id, s)));
+    }
+
+    function arreter() {
+      actif = false;
+      timers.forEach(clearTimeout);
+      timers = [];
+      if (btnCourant) btnCourant = null;
+    }
+
+    function lancer(nom, btn) {
+      arreter();
+      btnCourant = btn;
+      actif = true;
+      animations[nom]();
+    }
+
+    async function toutArreter() {
+      arreter();
+      statut('Arret...');
+      await setAll({ on: true, bri: 180, ct: 370, transitiontime: 20 });
+      statut('Lumiere normale');
+    }
+
+    // --- Briques eclairs ---
+
+    async function flashSimple() {
+      await setAll({ on: true, bri: 254, ct: 153, transitiontime: 0 });
+      await sleep(rand(70, 130));
+      await setAll({ on: true, bri: 12, hue: 46000, sat: 200, transitiontime: 2 });
+    }
+
+    async function flashDouble() {
+      await setAll({ on: true, bri: 254, ct: 153, transitiontime: 0 });
+      await sleep(rand(50, 90));
+      await setAll({ on: true, bri: 8, hue: 46000, sat: 200, transitiontime: 1 });
+      await sleep(rand(80, 160));
+      await setAll({ on: true, bri: 254, ct: 153, transitiontime: 0 });
+      await sleep(rand(80, 150));
+      await setAll({ on: true, bri: 12, hue: 46000, sat: 200, transitiontime: 2 });
+    }
+
+    async function flashScintillant() {
+      for (let i = 0; i < rand(3, 5); i++) {
+        await setAll({ on: true, bri: rand(180, 254), ct: 153, transitiontime: 0 });
+        await sleep(rand(30, 70));
+        await setAll({ on: true, bri: 6, hue: 46000, sat: 200, transitiontime: 1 });
+        await sleep(rand(40, 100));
+      }
+    }
+
+    async function flashLointain() {
+      await setAll({ on: true, bri: 80, ct: 200, transitiontime: 1 });
+      await sleep(rand(200, 400));
+      await setAll({ on: true, bri: 12, hue: 46000, sat: 200, transitiontime: 5 });
+    }
+
+    // --- Toutes les animations ---
+
+    const animations = {
+
+      orageLeger: async () => {
+        await setAll({ on: true, bri: 12, hue: 46500, sat: 180, transitiontime: 15 });
+        statut('Orage leger...');
+        const b = async () => {
+          if (!actif) return;
+          const r = rand(1, 10);
+          if (r <= 7) await flashSimple();
+          else if (r <= 9) await flashLointain();
+          else await flashDouble();
+          timers.push(setTimeout(b, rand(6000, 18000)));
+        };
+        b();
+      },
+
+      orageMoyen: async () => {
+        await setAll({ on: true, bri: 10, hue: 46000, sat: 200, transitiontime: 12 });
+        statut('Orage moyen...');
+        const b = async () => {
+          if (!actif) return;
+          const r = rand(1, 10);
+          if (r <= 4) await flashSimple();
+          else if (r <= 7) await flashDouble();
+          else if (r <= 9) await flashLointain();
+          else await flashScintillant();
+          timers.push(setTimeout(b, rand(3000, 10000)));
+        };
+        b();
+      },
+
+      orageViolent: async () => {
+        await setAll({ on: true, bri: 8, hue: 45500, sat: 220, transitiontime: 8 });
+        statut('Orage violent...');
+        const b = async () => {
+          if (!actif) return;
+          const r = rand(1, 10);
+          if (r <= 3) await flashSimple();
+          else if (r <= 6) await flashScintillant();
+          else if (r <= 8) await flashDouble();
+          else { await flashDouble(); await sleep(rand(200, 600)); await flashScintillant(); }
+          timers.push(setTimeout(b, rand(800, 5000)));
+        };
+        b();
+      },
+
+      orageAleatoire: async () => {
+        await setAll({ on: true, bri: 10, hue: 46000, sat: 200, transitiontime: 10 });
+        statut('Orage aleatoire...');
+        let phase = 'calme';
+        const b = async () => {
+          if (!actif) return;
+          if (rand(1, 8) === 1) {
+            phase = ['calme','montee','pic','descente'][rand(0, 3)];
+          }
+          let pause;
+          if (phase === 'calme') { await flashLointain(); pause = rand(8000, 20000); }
+          else if (phase === 'montee') { await flashSimple(); pause = rand(4000, 9000); }
+          else if (phase === 'pic') {
+            const r = rand(1, 3);
+            if (r === 1) await flashDouble();
+            else if (r === 2) await flashScintillant();
+            else { await flashDouble(); await sleep(300); await flashScintillant(); }
+            pause = rand(800, 3000);
+          } else { await flashSimple(); pause = rand(5000, 14000); }
+          timers.push(setTimeout(b, pause));
+        };
+        b();
+      },
+
+      bougie: async () => {
+        statut('Bougie...');
+        await setAll({ on: true, bri: 80, hue: 6500, sat: 230, transitiontime: 5 });
+        const b = async () => {
+          if (!actif) return;
+          await setAll({ on: true, bri: rand(40, 120), hue: rand(5000, 8000), sat: rand(200, 254), transitiontime: rand(1, 5) });
+          timers.push(setTimeout(b, rand(100, 400)));
+        };
+        b();
+      },
+
+      braise: async () => {
+        statut('Braise...');
+        await setAll({ on: true, bri: 40, hue: 4000, sat: 254, transitiontime: 20 });
+        let montee = true;
+        const b = async () => {
+          if (!actif) return;
+          await setAll({ on: true, bri: montee ? rand(60, 90) : rand(20, 50), hue: rand(3000, 5500), sat: 254, transitiontime: rand(10, 30) });
+          montee = !montee;
+          timers.push(setTimeout(b, rand(1200, 3000)));
+        };
+        b();
+      },
+
+      ocean: async () => {
+        statut('Ocean...');
+        const vagues = [
+          { bri: 30, hue: 43000, sat: 230, transitiontime: 40 },
+          { bri: 60, hue: 44000, sat: 200, transitiontime: 50 },
+          { bri: 80, hue: 45000, sat: 180, transitiontime: 60 },
+          { bri: 50, hue: 43500, sat: 220, transitiontime: 45 },
+          { bri: 25, hue: 42000, sat: 240, transitiontime: 35 },
+        ];
+        let i = 0;
+        await setAll({ on: true, bri: 30, hue: 43000, sat: 230, transitiontime: 20 });
+        const b = async () => {
+          if (!actif) return;
+          await setAll({ on: true, ...vagues[i % vagues.length] });
+          i++;
+          timers.push(setTimeout(b, rand(4000, 7000)));
+        };
+        b();
+      },
+
+      aurora: async () => {
+        statut('Aurore boreale...');
+        const palettes = [
+          { hue: 25500, sat: 220 },
+          { hue: 47000, sat: 200 },
+          { hue: 44000, sat: 180 },
+          { hue: 22000, sat: 200 },
+          { hue: 50000, sat: 220 },
+        ];
+        let tick = 0;
+        await setAll({ on: true, bri: 40, hue: 25500, sat: 220, transitiontime: 20 });
+        const b = async () => {
+          if (!actif) return;
+          for (let i = 0; i < LIGHTS.length; i++) {
+            const p = palettes[(tick + i) % palettes.length];
+            await setLight(LIGHTS[i], { on: true, bri: rand(30, 80), hue: p.hue + rand(-1000, 1000), sat: p.sat, transitiontime: rand(30, 80) });
+          }
+          tick++;
+          timers.push(setTimeout(b, rand(3000, 7000)));
+        };
+        b();
+      },
+
+      discoPulse: async () => {
+        statut('Disco pulse...');
+        const couleurs = [0, 10000, 25500, 46000, 54000, 60000];
+        let i = 0;
+        const b = async () => {
+          if (!actif) return;
+          await setAll({ on: true, bri: rand(150, 254), hue: couleurs[i % couleurs.length], sat: 254, transitiontime: 3 });
+          i++;
+          timers.push(setTimeout(b, rand(400, 900)));
+        };
+        b();
+      },
+
+      discoRapide: async () => {
+        statut('Disco rapide...');
+        const b = async () => {
+          if (!actif) return;
+          await setAll({ on: true, bri: 254, hue: rand(0, 65000), sat: 254, transitiontime: 0 });
+          timers.push(setTimeout(b, rand(80, 200)));
+        };
+        b();
+      },
+
+      neon: async () => {
+        statut('Neon...');
+        // Chaque lumiere a sa propre couleur neon fixe, qui pulse independamment
+        const neons = [
+          { hue: 54000, sat: 254 }, // rose neon
+          { hue: 44000, sat: 254 }, // cyan neon
+          { hue: 25500, sat: 254 }, // vert neon
+        ];
+        const bLight = async (id, couleur) => {
+          if (!actif) return;
+          const bri = rand(180, 254);
+          await setLight(id, { on: true, bri, hue: couleur.hue, sat: couleur.sat, transitiontime: rand(5, 15) });
+          timers.push(setTimeout(() => bLight(id, couleur), rand(500, 1500)));
+        };
+        for (let i = 0; i < LIGHTS.length; i++) {
+          bLight(LIGHTS[i], neons[i % neons.length]);
+        }
+      },
+
+      respiration: async () => {
+        statut('Respiration...');
+        // Monte doucement, descend doucement — cycle de 4 secondes
+        let monte = true;
+        const b = async () => {
+          if (!actif) return;
+          await setAll({ on: true, bri: monte ? 200 : 20, ct: 370, transitiontime: 35 });
+          monte = !monte;
+          timers.push(setTimeout(b, 3500));
+        };
+        await setAll({ on: true, bri: 20, ct: 370, transitiontime: 10 });
+        b();
+      },
+
+      coucher: async () => {
+        statut('Coucher de soleil...');
+        // Progression de blanc chaud vers orange vers rouge profond
+        const etapes = [
+          { bri: 200, hue: 8000,  sat: 100, transitiontime: 100 },
+          { bri: 160, hue: 6000,  sat: 180, transitiontime: 150 },
+          { bri: 110, hue: 4500,  sat: 220, transitiontime: 150 },
+          { bri:  70, hue: 3500,  sat: 240, transitiontime: 150 },
+          { bri:  40, hue: 2500,  sat: 254, transitiontime: 150 },
+          { bri:  15, hue: 1500,  sat: 254, transitiontime: 200 },
+        ];
+        let i = 0;
+        await setAll({ on: true, ...etapes[0] });
+        const b = async () => {
+          if (!actif) return;
+          i++;
+          if (i >= etapes.length) { statut('Coucher de soleil termine'); return; }
+          await setAll({ on: true, ...etapes[i] });
+          statut(`Coucher de soleil — etape ${i + 1}/${etapes.length}`);
+          timers.push(setTimeout(b, etapes[i].transitiontime * 100 + 2000));
+        };
+        timers.push(setTimeout(b, etapes[0].transitiontime * 100 + 2000));
+      },
+
+      foret: async () => {
+        statut('Foret...');
+        // Verts profonds qui bougent lentement, lumiere filtree par les feuilles
+        const b = async () => {
+          if (!actif) return;
+          for (let i = 0; i < LIGHTS.length; i++) {
+            await setLight(LIGHTS[i], {
+              on: true,
+              bri: rand(20, 70),
+              hue: rand(22000, 28000),
+              sat: rand(180, 254),
+              transitiontime: rand(40, 100)
+            });
+          }
+          timers.push(setTimeout(b, rand(4000, 9000)));
+        };
+        await setAll({ on: true, bri: 40, hue: 25000, sat: 220, transitiontime: 20 });
+        b();
+      },
+
+      rave: async () => {
+        statut('Rave...');
+        // Chaque lumiere clignote independamment a des vitesses differentes
+        const bLight = async (id, vitesse) => {
+          if (!actif) return;
+          await setLight(id, { on: true, bri: 254, hue: rand(0, 65000), sat: 254, transitiontime: 0 });
+          timers.push(setTimeout(() => bLight(id, vitesse), vitesse + rand(-30, 30)));
+        };
+        bLight(LIGHTS[0], 120);
+        bLight(LIGHTS[1], 180);
+        bLight(LIGHTS[2], 90);
+      },
+
+      nuit: async () => {
+        await setAll({ on: true, bri: 8, hue: 46000, sat: 200, transitiontime: 20 });
+        statut('Nuit');
+      },
+
+      lecture: async () => {
+        await setAll({ on: true, bri: 160, ct: 400, transitiontime: 20 });
+        statut('Lecture');
+      },
+
+      concentration: async () => {
+        await setAll({ on: true, bri: 254, ct: 153, transitiontime: 20 });
+        statut('Concentration');
+      }
+    };
+  </script>
+</body>
+</html>
